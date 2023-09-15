@@ -73,13 +73,18 @@ def normalize_percentages(
     return image_percentages
 
 
-def to_pie(percentages: Dict[str, Dict[Tuple, int]], output_dir: str) -> None:
+def to_pie(
+    percentages: Dict[str, Dict[Tuple, int]], output_dir: str, thumbnail: bool
+) -> None:
     for name, data in percentages.items():
         weights = []
         colors = []
         for px, perc in data.items():
             weights.append(perc)
             colors.append((px[0] / 255, px[1] / 255, px[2] / 255))
+
+        if thumbnail:
+            plt.figure().set_size_inches(15, 10, forward=True)
         plt.pie(x=weights, colors=colors)
         plt.savefig(f"{output_dir}/{name}.png", transparent=True)
         plt.close()
@@ -106,6 +111,13 @@ def parse_args():
         default=None,
         help="File prefix to perform operation for",
     )
+    parser.add_argument(
+        "--thumbnail",
+        required=False,
+        default=False,
+        action="store_true",
+        help="Create images sized for sporcle quiz thumbnail",
+    )
     return parser.parse_args()
 
 
@@ -121,7 +133,7 @@ def main():
     print(
         f"Finished normalizing percentages. Writing output files to {options.output_dir.split('/')[-1]}..."
     )
-    to_pie(percentages, options.output_dir)
+    to_pie(percentages, options.output_dir, options.thumbnail)
     print("Completed.")
     return 0
 
