@@ -2,6 +2,7 @@
 import os
 import glob
 import sys
+import math
 from argparse import ArgumentParser
 from typing import List, AnyStr, Dict, Tuple
 from PIL import Image
@@ -39,13 +40,14 @@ def load_images(flag: AnyStr) -> Tuple[str, Image.Image]:
 
 def generate_counts(image: Image.Image) -> Dict[Tuple[int, int, int], int]:
     color_counts = {}
-    for x in range(image.width):
-        for y in range(image.height):
-            px = image.getpixel(xy=(x, y))
-            if px in color_counts.keys():
-                color_counts[px] += 1
-            else:
-                color_counts[px] = 0
+    total_px = image.width * image.height - 1
+    for px_num in range(total_px):
+        xy = (px_num % image.width, math.floor(px_num / image.width))
+        px = image.getpixel(xy=xy)
+        if px in color_counts.keys():
+            color_counts[px] += 1
+        else:
+            color_counts[px] = 0
     return color_counts
 
 
