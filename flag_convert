@@ -29,66 +29,56 @@ def glob_files(dir: str, substr: str = None) -> List[AnyStr]:
     return set(valid_files) - set(invalid_files)
 
 
-def load_images(flags: List) -> Dict[str, Image.Image]:
-    images = {}
-    for f in flags:
-        name = f.split("/")[-1].split(".")[0]
-        img = Image.open(f)
-        if img.mode != "RBG":
-            img = img.convert("RGB")
-        images.update({name: img})
-        print(f"Loaded image for {name}")
-    return images
+def load_images(flag: AnyStr) -> Tuple[str, Image.Image]:
+    name = flag.split("/")[-1].split(".")[0]
+    img = Image.open(flag)
+    if img.mode != "RBG":
+        img = img.convert("RGB")
+    return name, img
 
 
-def generate_counts(images: Dict[str, Image.Image]) -> Dict[str, Dict[Tuple, int]]:
-    img_counts = {}
-    for name, image in images.items():
-        color_counts = {}
-        for x in range(image.width):
-            for y in range(image.height):
-                px = image.getpixel(xy=(x, y))
-                if px in color_counts.keys():
-                    color_counts[px] += 1
-                else:
-                    color_counts[px] = 0
-        img_counts.update({name: color_counts})
-        print(f"Generated pixel counts for {name}")
-    return img_counts
+def generate_counts(image: Image.Image) -> Dict[Tuple[int, int, int], int]:
+    color_counts = {}
+    for x in range(image.width):
+        for y in range(image.height):
+            px = image.getpixel(xy=(x, y))
+            if px in color_counts.keys():
+                color_counts[px] += 1
+            else:
+                color_counts[px] = 0
+    return color_counts
 
 
 def normalize_percentages(
-    img_counts: Dict[str, Dict[Tuple, int]]
-) -> Dict[str, Dict[Tuple, float]]:
-    image_percentages = {}
-    for name, counts in img_counts.items():
-        percentages = {}
-        total = sum(counts.values())
-        for px, count in counts.items():
-            perc = count / total * 100
-            if perc >= PERCENTAGE_THRESHOLD:
-                percentages[px] = perc
-        image_percentages[name] = percentages
-        print(f"Normalized percentages for {name}")
-    return image_percentages
+    counts: Dict[Tuple[int, int, int], int]
+) -> Dict[Tuple[int, int, int], float]:
+    percentages = {}
+    total = sum(counts.values())
+    for px, count in counts.items():
+        perc = count / total * 100
+        if perc >= PERCENTAGE_THRESHOLD:
+            percentages[px] = perc
+    return percentages
 
 
 def to_pie(
-    percentages: Dict[str, Dict[Tuple, int]], output_dir: str, thumbnail: bool
+    percentages: Dict[Tuple[int, int, int], float],
+    name: str,
+    output_dir: str,
+    thumbnail: bool,
 ) -> None:
-    for name, data in percentages.items():
-        weights = []
-        colors = []
-        for px, perc in data.items():
-            weights.append(perc)
-            colors.append((px[0] / 255, px[1] / 255, px[2] / 255))
+    weights = []
+    colors = []
+    for px, perc in percentages.items():
+        weights.append(perc)
+        colors.append((px[0] / 255, px[1] / 255, px[2] / 255))
 
-        if thumbnail:
-            plt.figure().set_size_inches(15, 10, forward=True)
-        plt.pie(x=weights, colors=colors)
-        plt.savefig(f"{output_dir}/{name}.png", transparent=True)
-        plt.close()
-        print(f"Graph created for {name}")
+    if thumbnail:
+        plt.figure().set_size_inches(15, 10, forward=True)
+    plt.pie(x=weights, colors=colors)
+    plt.savefig(f"{output_dir}/{name}.png", transparent=True)
+    plt.close()
+    print(f"Graph created for {name}")
 
 
 def parse_args():
@@ -124,17 +114,18 @@ def parse_args():
 def main():
     options = parse_args()
     flags = glob_files(options.input_dir, options.substring)
-    print(f"Loading images from {options.input_dir.split('/')[-1]}...")
-    images = load_images(flags)
-    print("Finished loading images. Generating pixel counts...")
-    counts = generate_counts(images)
-    print("Finished generating pixel counts. Normalizing image percentages...")
-    percentages = normalize_percentages(counts)
-    print(
-        f"Finished normalizing percentages. Writing output files to {options.output_dir.split('/')[-1]}..."
-    )
-    to_pie(percentages, options.output_dir, options.thumbnail)
-    print("Completed.")
+    for flag in flags:
+        print(f"Loading image: {flag}")
+        name, image = load_images(flag)
+        print("Generating pixel counts...")
+        counts = generate_counts(image)
+        print("Normalizing image percentages...")
+        percentages = normalize_percentages(counts)
+        print(
+            f"Writing output file {name}.png to {options.output_dir.split('/')[-1]}..."
+        )
+        to_pie(percentages, name, options.output_dir, options.thumbnail)
+        print("Completed.")
     return 0
 
 
