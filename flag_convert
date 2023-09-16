@@ -22,12 +22,14 @@ def glob_files(dir: str, substr: str = None) -> List[AnyStr]:
             pattern = f"**/{substr}*.{ft}"
         else:
             pattern = f"**/*.{ft}"
-        valid_files.extend(glob.glob(pattern))
+        valid_files.extend(glob.glob(pattern, recursive=True))
 
     for ft in INVALID_DIRECTORIES:
         invalid_files.extend(glob.glob(f"{ft}/*"))
 
-    return set(valid_files) - set(invalid_files)
+    valid = set(valid_files) - set(invalid_files)
+    print(f"Valid files found: {len(valid)}")
+    return valid
 
 
 def load_images(flag: AnyStr) -> Tuple[str, Image.Image]:
@@ -115,7 +117,10 @@ def parse_args():
 
 def main():
     options = parse_args()
-    flags = glob_files(options.input_dir, options.substring)
+    input_dir = options.input_dir
+    if not os.path.isabs(input_dir):
+        input_dir = os.path.join(os.getcwd(), input_dir)
+    flags = glob_files(input_dir, options.substring)
     for flag in flags:
         print(f"Loading image: {flag}")
         name, image = load_images(flag)
